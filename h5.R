@@ -3,15 +3,19 @@ library(tidyr)
 library(plyr) #conversion
 library(ggplot2)
 
-#----------Initial Variables
 
+#--------------------------------------------------------
+#             Initiliaztion - from weekly
+#--------------------------------------------------------
 
-#csvlist = Hgen()
 csvlist = jdata$name
 csvlist <- paste(csvlist,".csv",sep='')
 csvlist <- unique(csvlist)
 
-#----------File Loop
+#--------------------------------------------------------
+#             Header Reading Function
+#--------------------------------------------------------
+
 setwd("~/_Dev/hData")
 headerloop <- function(csvlist) {
   
@@ -20,21 +24,27 @@ headerloop <- function(csvlist) {
 
 }
 
-#-------Executing The Loop
+#--------------------------------------------------------
+#             Executing Header Function
+#--------------------------------------------------------
 
-mlist <- lapply(csvlist, headerloop)
+mlist <- lapply(csvlist, headerloop) ##### MAIN LOOP #####
 mdf <- ldply (mlist, data.frame)
 
 #updating column headers
-colnames(mdf) = c('id', 'adj', 'Name', 'dGross', 'dist', 'rDate', 'G', 'Runtime',  'Rating', 'pBudget')
+colnames(mdf) = c('id', 'adj', 'Name', 'dGross', 
+                  'dist', 'rDate', 'G', 'Runtime',  'Rating', 'pBudget')
 mdf <- mdf[ , !names(mdf) %in% c("adj","dist")]
 mdf <- tbl_df(mdf)
 
+mdft <- mdf
 
-#----- Cleaning the contents
+#--------------------------------------------------------
+#             Cleaning Header Results
+#--------------------------------------------------------
 
 #HTML replacements - removing html fragments
-mdf <- as.data.frame(sapply(mdf,gsub,pattern="<b>|</b>|<br/>|\\$",replacement=""))
+mdf <- as.data.frame(sapply(mdf,gsub,pattern="<b>|</b>|<br/>|<i>|</i>|\\$",replacement=""))
 mdf <- as.data.frame(sapply(mdf,gsub,pattern=".*date=",replacement="")) #date specific
 mdf <- as.data.frame(sapply(mdf,gsub,pattern="&amp;p=.htm\">.*",replacement="")) #date specific
 #print(head(mdf))
@@ -50,9 +60,11 @@ mdf$pBudget <- as.character(gsub( ' million', '\\*1000000', mdf$pBudget))
 mdf$pBudget <- as.character(gsub( 'N/A', '0', mdf$pBudget)) #Sets NA to 0
 mdf$pBudget <- as.character(gsub( ',', '', mdf$pBudget))
 
-rtExp <- sapply(mdf$pBudget, function(x) eval(parse(text=x))) #expression to value
-rtExp = rtExp / 1000000 # converting to millions
-mdf$pBudget <-as.numeric(rtExp)
+pExp <- sapply(mdf$pBudget, function(x) eval(parse(text=x))) #expression to value
+pExp = pExp / 1000000 # converting to millions
+pExp[pExp==0] <- NA #replacing 0 with NA for log
+mdf <- cbind(mdf, pExp) #binding to frame
+mdf <- mdf[ , !names(mdf) %in% c("pBudget")] #removing old column
 
 
 #Runtime - Changing from "[X hrs Y min]" to "[Z]", where Z is minutes
@@ -77,7 +89,7 @@ mdf$G <- as.character(gsub( ' ', '', mdf$G))
 mdf$G <- as.character(gsub( '/', '', mdf$G))
 
 
-#------Adding Franchises
+#Preparing For Franchises
 nosp = mdf$Name
 nosp = gsub(' ','', nosp)
 nosp = gsub(':','', nosp)
@@ -85,12 +97,13 @@ nosp = gsub(':','', nosp)
 #print(nospcol)
 mdf <- cbind(mdf,nosp)
 
-setwd("~/_Dev/_Backup")
+
 
   
 
-#------------------------------------Franchise
-#---These CSVs are diff than the otherlist in content and structure
+#--------------------------------------------------------
+#             Franchise Function
+#--------------------------------------------------------
 
 Fgen <- function() {
 csvflist = c(
@@ -278,17 +291,22 @@ franchiseloop <- function(csvlist) {
   #reading in the file
   item = read.csv(csvlist, header = TRUE, stringsAsFactors = FALSE)
   
+  name = gsub('.csv','',csvlist)
+  
+  return(cbind(name,item))
 }
 
 #-------Executing The Loop
 
-flist <- lapply(csvflist, franchiseloop)
+flist <- lapply(csvflist, franchiseloop) ##### MAIN LOOP #####
 fdf <- ldply (flist, data.frame)
 
 
-#----- Cleaning the contents
+#--------------------------------------------------------
+#             Cleaning Franchise Results
+#--------------------------------------------------------
 
-nosp= fdf$name
+nosp= fdf$name.1
 nosp = as.character(gsub( ' ', '', nosp))
 nosp = as.character(gsub( ':', '', nosp))
 franchise = c(1:length(nosp))
@@ -297,21 +315,27 @@ franchise = 1
 fdf = cbind(fdf, nosp, franchise)
 #print (head(fdf))
 
-#---------------------------------------Joining Franchise and Header
+#----------Joining Franchise and Header
 
 mdf <-join(mdf, fdf, by='nosp')
-mdf <- mdf[ , !names(mdf) %in% c("name","date")]
+mdf <- mdf[ , !names(mdf) %in% c("name.1","date")]
 mdf$franchise <- as.numeric(mdf$franchise)
 mdf <- distinct(mdf)
 #print(filter(mdf, franchise==1))
 
 #r2tgdata comes from weekly code
 mdf <-join(r2tgdata, mdf, by='id')
+mdf$franchise[is.na(mdf$franchise)] <- 0
+mdf$franchise <- as.factor(mdf$franchise)
 print(head(mdf))
+mdf <- distinct(mdf)
 
 
-#---------Output
+#--------------------------------------------------------
+#             Output
+#--------------------------------------------------------
+
 setwd("~/_Dev/_Backup")
-write.csv(mdf, file = "2015h.csv", row.names=FALSE) #franchise and header
-#write.csv(fdf, file = "2015f.csv", row.names=FALSE) #franchise
+write.csv(mdf, file = "HeaderData.csv", row.names=FALSE) #franchise and header
+write.csv(fdf, file = "FranchiseData.csv", row.names=FALSE) #franchise
 #rm(list = ls())
