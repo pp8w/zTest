@@ -3834,7 +3834,9 @@ CurveGen <- function(csvlist, flag) {
   item = read.csv(csvlist, header = TRUE, stringsAsFactors = FALSE)
   week = as.numeric(gsub( ',', '', item$week))
   wGross = as.numeric(gsub( ',', '', item$wGross))
+  trs = as.numeric(gsub( ',', '', item$trs))
   
+    
   #cleaning name for output
   name = gsub('.csv','',csvlist)
   #print (name)
@@ -3862,7 +3864,7 @@ CurveGen <- function(csvlist, flag) {
     week[length(week)] = week[length(week) - 1] + 1
     
     #return value, removes duplicative row
-    output = cbind(name, week, wGross, dCurve)
+    output = cbind(name, week, wGross, dCurve, trs)
     output = output[-1,] 
     setwd("~/_Dev/rData")
     write.csv(output, file = csvlist, row.names=FALSE)
@@ -3881,7 +3883,7 @@ CurveGen <- function(csvlist, flag) {
   week[length(week)] = week[length(week) - 1] + 1
     
   #return value
-  output = cbind(name, week, wGross, dCurve)
+  output = cbind(name, week, wGross, dCurve, trs)
   
   setwd("~/_Dev/rData")
   write.csv(output, file = csvlist, row.names=FALSE)
@@ -3912,22 +3914,22 @@ gdata$wGross <- as.numeric(as.character(gdata$wGross))
 gdata$dCurve <- as.numeric(as.character(gdata$dCurve))
 
 #Combining those sets
-jdata <- rbind(zdata, gdata)
-jdata$week <- jdata$week - 1 #indexing to 0
-jdata<- tbl_df(jdata)
-jdata<- unique(jdata)
+curveData <- rbind(zdata, gdata)
+curveData$week <- curveData$week - 1 #indexing to 0
+curveData<- tbl_df(curveData)
+curveData<- unique(curveData)
 
 #--------------------------------------------------------
 #             Opening Week & Theatres
 #--------------------------------------------------------
 
-tlistn <- jdata$name
+tlistn <- curveData$name
 tlistn <- paste(tlistn,".csv",sep='')
 tlistn <- unique(tlistn)
 tlistn2 <- tlistn
 
 OpenCalc <- function(list){
-  setwd("~/_Dev/wData")
+  setwd("~/_Dev/rData")
   item = read.csv(list, header = TRUE, stringsAsFactors = FALSE)
   wGross = as.numeric(gsub( ',', '', item$wGross))
   trs = as.numeric(gsub( ',', '', item$trs))
@@ -4001,9 +4003,9 @@ r2df <- tbl_df(r2df)
 #print(r2df)
 
 #Joining with Total Gross Data
-r2tgdata <-join(r2df, tlistn, by='id')
-print(head(r2tgdata))
-r2tgdata <- distinct(r2tgdata)
+openData <-join(r2df, tlistn, by='id')
+print(head(openData))
+openData <- distinct(openData)
 
 
 #--------------------------------------------------------
@@ -4011,7 +4013,7 @@ r2tgdata <- distinct(r2tgdata)
 #--------------------------------------------------------
 
 setwd("~/_Dev/_Backup")
-write.csv(r2tgdata, file = "WeeklyR2.csv", row.names=FALSE) #r2 & tg info
-write.csv(jdata, file = "WeeklyCurves.csv", row.names=FALSE) #weekly
+write.csv(openData, file = "WeeklyOpen.csv", row.names=FALSE) #r2 & tg info
+write.csv(curveData, file = "WeeklyCurves.csv", row.names=FALSE) #weekly
 #rm(list = ls())
 

@@ -8,7 +8,7 @@ library(ggplot2)
 #             Initiliaztion - from weekly
 #--------------------------------------------------------
 
-csvlist = jdata$name
+csvlist = curveData$name
 csvlist <- paste(csvlist,".csv",sep='')
 csvlist <- unique(csvlist)
 
@@ -28,8 +28,8 @@ headerloop <- function(csvlist) {
 #             Executing Header Function
 #--------------------------------------------------------
 
-mlist <- lapply(csvlist, headerloop) ##### MAIN LOOP #####
-mdf <- ldply (mlist, data.frame)
+mdf <- lapply(csvlist, headerloop) ##### MAIN LOOP #####
+mdf <- ldply (mdf, data.frame)
 
 #updating column headers
 colnames(mdf) = c('id', 'adj', 'Name', 'dGross', 
@@ -313,6 +313,8 @@ franchise = c(1:length(nosp))
 franchise = 1
 
 fdf = cbind(fdf, nosp, franchise)
+fdupes <- c("captainamerica", "superman", "batman", "godzillakong", "ironmanfranchise", "avengersfranchise", "middleearth", "thor", "wolverine")
+fdf <- subset(fdf, !name %in% fdupes)
 #print (head(fdf))
 
 #----------Joining Franchise and Header
@@ -323,12 +325,21 @@ mdf$franchise <- as.numeric(mdf$franchise)
 mdf <- distinct(mdf)
 #print(filter(mdf, franchise==1))
 
-#r2tgdata comes from weekly code
-mdf <-join(r2tgdata, mdf, by='id')
+#openData comes from weekly code
+mdf <-join(openData, mdf, by='id')
 mdf$franchise[is.na(mdf$franchise)] <- 0
 mdf$franchise <- as.factor(mdf$franchise)
 print(head(mdf))
 mdf <- distinct(mdf)
+
+#checks for duplicates
+sum(duplicated(mdf$id))
+
+#One Off Fix
+ffix <- grep("fast6", mdf$id)
+mdf$name[ffix]="fastandthefurious"	
+mdf$franchise[ffix]="1"	
+
 
 
 #--------------------------------------------------------
